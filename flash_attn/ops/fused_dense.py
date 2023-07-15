@@ -255,7 +255,7 @@ class FusedMLPFunc(torch.autograd.Function):
         else:
             is_gelu = activation == 'gelu_approx'
             output1, *rest = fused_dense_cuda.linear_act_forward(
-                total_x.reshape(batch_dim, n), weight1, bias1, is_gelu, save_pre_act, heuristic
+                total_x.reshape(batch_dim, n), weight1, bias1, is_gelu, save_pre_act, heuristic, None
             )
             if save_pre_act:
                 pre_act = rest[0]
@@ -308,7 +308,7 @@ class FusedMLPFunc(torch.autograd.Function):
             else:
                 output1, pre_act = fused_dense_cuda.linear_act_forward(
                     total_x.reshape(batch_dim, total_x.shape[-1]), weight1, bias1,
-                    activation == 'gelu_approx', True, ctx.heuristic
+                    activation == 'gelu_approx', True, ctx.heuristic, None
                 )
 
         grad_output = grad_output.reshape(batch_dim, grad_output.shape[-1])

@@ -238,6 +238,7 @@ void launch_(LaunchParams<FwdParams> &launch_params, const bool configure_params
                         launch_params.params.ctas_per_col = launch_params.props->multiProcessorCount * ctas_per_sm / Kernel_traits::CTAS_PER_ROW;
                         const size_t rows_per_loop = launch_params.params.ctas_per_col * Kernel_traits::ROWS_PER_CTA;
                         launch_params.elts_per_thread = (launch_params.params.rows + rows_per_loop - 1) / rows_per_loop * Kernel_traits::LDGS * Kernel_traits::NUM_ELTS;
+
                         launch_params.barrier_size = 0;
                         launch_params.workspace_bytes = 0;
                         if(Kernel_traits::CTAS_PER_ROW > 1) {

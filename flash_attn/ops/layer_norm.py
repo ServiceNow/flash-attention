@@ -16,17 +16,21 @@ def maybe_align(x, alignment_in_bytes=16):
 
 
 def _dropout_add_layer_norm_forward(x0, residual, gamma, beta, rowscale, colscale, dropout_p,
-                                    epsilon, residual_in_fp32=False, is_rms_norm=False):
+                                    epsilon, residual_in_fp32=False, is_rms_norm=False, generator=None):
     """ Assume that arguments are contiguous and aligned to 16 bytes
     """
     hidden_size = gamma.numel()
     x0mat = x0.view((-1, hidden_size))
     residualmat = residual.view((-1, hidden_size)) if residual is not None else None
     rowscale = rowscale.view(-1) if rowscale is not None else None
+    print("AAAAAA",generator.get_state()[-16:].tolist())
+    print("BBBBBB",torch.cuda.default_generators[torch.cuda.current_device()].get_state()[-16:].tolist())
     zmat, xmat, dmask, mu, rsigma = dropout_layer_norm.dropout_add_ln_fwd(
         x0mat, residualmat, gamma, beta, rowscale, colscale, None, None, dropout_p, epsilon,
-        1.0, 0, None, residual_in_fp32, is_rms_norm
+        1.0, 0, generator, residual_in_fp32, is_rms_norm, None, None, None, None, None
     )
+    print("CCCCCC",generator.get_state()[-16:].tolist())
+    print("DDDDDD",torch.cuda.default_generators[torch.cuda.current_device()].get_state()[-16:].tolist())
     # dmask is None if dropout_p == 0.0
     # xmat is None if dropout_p == 0.0 and residual is None and residual_dtype != input_dtype
     return zmat, xmat if xmat is not None else x0mat, dmask, mu, rsigma
@@ -71,7 +75,7 @@ def _dropout_add_layer_norm_subset_forward(x0, residual, gamma, beta, colscale, 
     out_subset = out_subset.view(-1) if out_subset is not None else None
     zmat, xmat, dmask, mu, rsigma = dropout_layer_norm.dropout_add_ln_fwd(
         x0mat, residualmat, gamma, beta, None, colscale, x0_subset, out_subset, dropout_p, epsilon,
-        rowscale_const, out_numrows, None, residual_in_fp32, is_rms_norm
+        rowscale_const, out_numrows, None, residual_in_fp32, is_rms_norm, None, None, None, None, None
     )
     # dmask is None if dropout_p == 0.0
     # xmat is None if dropout_p == 0.0 and residual is None and residual_dtype != input_dtype
@@ -150,7 +154,7 @@ def _dropout_add_layer_norm_parallel_residual_backward(
 class DropoutAddLayerNormFn(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x0, residual, gamma, beta, rowscale, colscale, dropout_p, epsilon,
-                residual_in_fp32=False, prenorm=False, is_rms_norm=False, return_dmask=False):
+                residual_in_fp32=False, prenorm=False, is_rms_norm=False, return_dmask=False, generator=None):
         x0 = maybe_align(x0.contiguous(), 16)
         residual = maybe_align(residual.contiguous(), 16) if residual is not None else None
         gamma = maybe_align(gamma.contiguous(), 16)
@@ -159,7 +163,7 @@ class DropoutAddLayerNormFn(torch.autograd.Function):
         colscale = maybe_align(colscale.contiguous(), 16) if colscale is not None else None
         zmat, xmat, dmask, mu, rsigma = _dropout_add_layer_norm_forward(
             x0, residual, gamma, beta, rowscale, colscale, dropout_p, epsilon,
-            residual_in_fp32, is_rms_norm
+            residual_in_fp32, is_rms_norm, generator
         )
         # Only need to save x0 if we need to compute gradient wrt colscale
         x0_saved = x0 if colscale is not None else None
@@ -196,7 +200,7 @@ class DropoutAddLayerNormFn(torch.autograd.Function):
         dresidual = dresidualmat.view(x.shape) if dresidualmat is not None else None
         dcolscale = rest[0] if colscale is not None else None
         return (dx0, dresidual, dgamma, dbeta if ctx.has_beta else None, None, dcolscale, None,
-                None, None, None, None, None)
+                None, None, None, None, None, None)
 
 
 class DropoutAddLayerNormSubsetFn(torch.autograd.Function):
@@ -316,13 +320,13 @@ def layer_norm(x, weight, bias, epsilon):
 
 def dropout_add_layer_norm(x0, residual, weight, bias, dropout_p, epsilon, rowscale=None,
                            layerscale=None, prenorm=False, residual_in_fp32=False,
-                           return_dropout_mask=False):
+                           return_dropout_mask=False, generator=None):
     """residual_in_fp32 only has an effect if residual is None.
     Otherwise residual dtype is residual.dtype.
     """
     return DropoutAddLayerNormFn.apply(
         x0, residual, weight, bias, rowscale, layerscale, dropout_p, epsilon, residual_in_fp32, prenorm,
-        False, return_dropout_mask
+        False, return_dropout_mask, generator
     )
 
 

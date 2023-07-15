@@ -201,7 +201,9 @@ mha_fwd(const at::Tensor &q,         // total_q x num_heads x head_size, total_q
         const bool is_causal,
         const bool return_softmax,
         const int num_splits,
-        c10::optional<at::Generator> gen_) {
+        c10::optional<at::Generator> gen_,
+        const c10::optional<at::Tensor>  &softmax_lse_// b x h x s softmax logsumexp
+        ) {
 
     auto dprops = at::cuda::getCurrentDeviceProperties();
     bool is_sm75 = dprops->major == 7 && dprops->minor == 5;
@@ -274,7 +276,7 @@ mha_fwd(const at::Tensor &q,         // total_q x num_heads x head_size, total_q
     at::Tensor o_tmp;
     if (loop) { o_tmp = torch::empty({total_q, num_heads, head_size}, opts.dtype(at::kFloat)); }
 
-    auto softmax_lse = torch::empty({batch_size, num_heads, max_seqlen_q}, opts.dtype(at::kFloat));
+    auto softmax_lse = softmax_lse_.has_value() ? softmax_lse_.value() : torch::empty({batch_size, num_heads, max_seqlen_q}, opts.dtype(at::kFloat));
     // auto softmax_lse = torch::full({batch_size, num_heads, max_seqlen_k}, -std::numeric_limits<float>::infinity(), opts.dtype(at::kFloat));
 
     at::Tensor s;

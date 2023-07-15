@@ -20,7 +20,7 @@ def _flash_attn_forward(q, k, v, out, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, 
     """
     softmax_lse, rng_state, *rest = flash_attn_cuda.fwd(
         q, k, v, out, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k, dropout_p,
-        softmax_scale, False, causal, return_softmax, num_splits, generator
+        softmax_scale, False, causal, return_softmax, num_splits, generator, None
     )
     # if out.isnan().any() or softmax_lse.isnan().any():
     #     breakpoint()

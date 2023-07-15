@@ -37,6 +37,7 @@ struct Mask {
     template<typename BInfo>
     __device__ Mask(const BInfo &binfo, int tidx, const int loop_step_idx_ = 0)
         : actual_seqlen_k(binfo.actual_seqlen_k - loop_step_idx_ * Cta_tile::N)
+        , actual_seqlen_q(binfo.actual_seqlen_q) //CHANGE!!! Added variable
         , loop_step_idx(loop_step_idx_) {
 
         const int warp = tidx / Cta_tile::THREADS_PER_WARP;
@@ -67,7 +68,8 @@ struct Mask {
         // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (blockIdx.z == 1)) {
         //     printf("current_col=%d, current_row=%d, actual_seqlen_k=%d, col_valid=%d, all_valid=%d\n", current_col, current_row, actual_seqlen_k, col_valid, all_valid);
         // }
-        return Is_causal ? col_valid && (current_col + loop_step_idx * Cta_tile::N <= current_row) : col_valid;
+        //CHANGE!!! Causal mask at end of sk instead of beginning
+        return Is_causal ? col_valid && (current_col + loop_step_idx * Cta_tile::N - actual_seqlen_k <= current_row - actual_seqlen_q) : col_valid;
         // return row_valid && col_valid;
     }
 
@@ -85,6 +87,8 @@ struct Mask {
     int col;
     const int loop_step_idx;
     const int actual_seqlen_k;
+    // TODO: Does this cost extra registers / hurt performance?
+    const int actual_seqlen_q; //CHANGE!!! Added variable
 };
 
 }  // namespace fmha
