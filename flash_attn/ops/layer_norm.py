@@ -23,14 +23,10 @@ def _dropout_add_layer_norm_forward(x0, residual, gamma, beta, rowscale, colscal
     x0mat = x0.view((-1, hidden_size))
     residualmat = residual.view((-1, hidden_size)) if residual is not None else None
     rowscale = rowscale.view(-1) if rowscale is not None else None
-    print("AAAAAA",generator.get_state()[-16:].tolist())
-    print("BBBBBB",torch.cuda.default_generators[torch.cuda.current_device()].get_state()[-16:].tolist())
     zmat, xmat, dmask, mu, rsigma = dropout_layer_norm.dropout_add_ln_fwd(
         x0mat, residualmat, gamma, beta, rowscale, colscale, None, None, dropout_p, epsilon,
         1.0, 0, generator, residual_in_fp32, is_rms_norm, None, None, None, None, None
     )
-    print("CCCCCC",generator.get_state()[-16:].tolist())
-    print("DDDDDD",torch.cuda.default_generators[torch.cuda.current_device()].get_state()[-16:].tolist())
     # dmask is None if dropout_p == 0.0
     # xmat is None if dropout_p == 0.0 and residual is None and residual_dtype != input_dtype
     return zmat, xmat if xmat is not None else x0mat, dmask, mu, rsigma
