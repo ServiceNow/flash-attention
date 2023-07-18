@@ -479,8 +479,11 @@ mha_varlen_fwd(const at::Tensor &q,  // total_q x num_heads x head_size, total_q
 }
 
 void run_mha_bwd(Flash_bwd_params &params, cudaStream_t stream, const bool configure) {
+
     FP16_SWITCH(!params.is_bf16, [&] {
-        if (params.d <= 32) {
+        TORCH_CHECK(params.d == 128, "Invalid size");
+        run_mha_bwd_<elem_type, 128>(params, stream, configure);
+        /*if (params.d <= 32) {
             run_mha_bwd_<elem_type, 32>(params, stream, configure);
         } else if (params.d <= 64) {
             run_mha_bwd_<elem_type, 64>(params, stream, configure);
@@ -496,7 +499,7 @@ void run_mha_bwd(Flash_bwd_params &params, cudaStream_t stream, const bool confi
           run_mha_bwd_<elem_type, 224>(params, stream, configure);
         } else if (params.d <= 256) {
           run_mha_bwd_<elem_type, 256>(params, stream, configure);
-        }
+        }*/
     });
 }
 

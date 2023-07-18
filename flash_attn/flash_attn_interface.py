@@ -44,7 +44,7 @@ def _flash_attn_forward(q, k, v, dropout_p, softmax_scale, causal, return_softma
     if v.stride(-1) != 1:
         v = v.contiguous()
     out, q, k, v, out_padded, softmax_lse, S_dmask = flash_attn_cuda.fwd(
-        q, k, v, None, dropout_p, softmax_scale, causal, return_softmax, None, generator, seqlen_q, seqlen_k, softmax_lse
+        q, k, v, None, dropout_p, softmax_scale, causal, return_softmax, generator, seqlen_q, seqlen_k, softmax_lse
     )
     return out, q, k, v, out_padded, softmax_lse, S_dmask
 
@@ -59,7 +59,7 @@ def _flash_attn_varlen_forward(q, k, v, cu_seqlens_q, cu_seqlens_k, max_seqlen_q
         v = v.contiguous()
     out, q, k, v, out_padded, softmax_lse, S_dmask = flash_attn_cuda.varlen_fwd(
         q, k, v, None, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k, dropout_p,
-        softmax_scale, False, causal, return_softmax, None, generator, softmax_lse
+        softmax_scale, False, causal, return_softmax, generator, softmax_lse
     )
     # if out.isnan().any() or softmax_lse.isnan().any():
     #     breakpoint()
