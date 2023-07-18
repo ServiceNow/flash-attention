@@ -193,6 +193,8 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
         const bool is_causal,
         const bool return_softmax,
         c10::optional<at::Generator> gen_,
+        c10::optional<int> seqlen_q_,
+        c10::optional<int> seqlen_k_,
         const c10::optional<at::Tensor> &softmax_lse_ // b x h x s softmax logsumexp
         ) {
 
@@ -224,10 +226,10 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
     const auto sizes = q.sizes();
 
     const int batch_size = sizes[0];
-    const int seqlen_q = sizes[1];
+    const int seqlen_q = seqlen_q_.has_value() ? seqlen_q_.value() : sizes[1];
     const int num_heads = sizes[2];
     const int head_size_og = sizes[3];
-    const int seqlen_k = k.size(1);
+    const int seqlen_k = seqlen_k_.has_value() ? seqlen_k_.value() : k.size(1);
     const int num_heads_k = k.size(2);
     TORCH_CHECK(batch_size > 0, "batch size must be postive");
     TORCH_CHECK(head_size_og <= 256, "FlashAttention forward only supports head dimension at most 256");

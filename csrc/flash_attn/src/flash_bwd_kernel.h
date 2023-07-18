@@ -790,7 +790,7 @@ inline __device__ void compute_dq_dk_dv_1colblock(const Params &params, const in
         // Putting this causal masking right after acc_s is *much* slower for some reason.
         if (Is_causal && m_block * kBlockM < (n_block + 1) * kBlockN) {
             flash::apply_mask_causal(scores, n_block * kBlockN + (tidx / 32 / AtomLayoutMS) * MMA_N_SdP * 16,
-                                     binfo.actual_seqlen_q, binfo.actual_seqlen_k, m_block * kBlockM + get<0>(taccScS_row(0)),
+                                     (int)binfo.actual_seqlen_q, (int)binfo.actual_seqlen_k, m_block * kBlockM + get<0>(taccScS_row(0)),
                                      // binfo.actual_seqlen_k, m_block * kBlockM + (tidx / 32) % AtomLayoutMS * 16 + (tidx % 32) / 4,
                                      AtomLayoutMS * 16);
         }
