@@ -24,7 +24,6 @@ def _dropout_add_layer_norm_forward(
     epsilon,
     residual_in_fp32=False,
     is_rms_norm=False,
-    generator=None,
 ):
     """Assume that arguments are contiguous and aligned to 16 bytes"""
     hidden_size = gamma.numel()
@@ -47,11 +46,6 @@ def _dropout_add_layer_norm_forward(
         None,
         residual_in_fp32,
         is_rms_norm,
-        None,
-        None,
-        None,
-        None,
-        None,
     )
     # dmask is None if dropout_p == 0.0
     # xmat is None if dropout_p == 0.0 and residual is None and residual_dtype != input_dtype
@@ -150,11 +144,6 @@ def _dropout_add_layer_norm_subset_forward(
         None,
         residual_in_fp32,
         is_rms_norm,
-        None,
-        None,
-        None,
-        None,
-        None,
     )
     # dmask is None if dropout_p == 0.0
     # xmat is None if dropout_p == 0.0 and residual is None and residual_dtype != input_dtype
@@ -335,7 +324,6 @@ class DropoutAddLayerNormFn(torch.autograd.Function):
         prenorm=False,
         is_rms_norm=False,
         return_dmask=False,
-        generator=None,
     ):
         x0 = maybe_align(x0.contiguous(), 16)
         residual = maybe_align(residual.contiguous(), 16) if residual is not None else None
@@ -354,7 +342,6 @@ class DropoutAddLayerNormFn(torch.autograd.Function):
             epsilon,
             residual_in_fp32,
             is_rms_norm,
-            generator,
         )
         # Only need to save x0 if we need to compute gradient wrt colscale
         x0_saved = x0 if colscale is not None else None
@@ -423,8 +410,8 @@ class DropoutAddLayerNormFn(torch.autograd.Function):
             None,
             None,
             None,
-            None,
         )
+
 
 class DropoutAddLayerNormSubsetFn(torch.autograd.Function):
     @staticmethod
@@ -683,7 +670,6 @@ def dropout_add_layer_norm(
     prenorm=False,
     residual_in_fp32=False,
     return_dropout_mask=False,
-    generator=None
 ):
     """residual_in_fp32 only has an effect if residual is None.
     Otherwise residual dtype is residual.dtype.
@@ -701,7 +687,6 @@ def dropout_add_layer_norm(
         prenorm,
         False,
         return_dropout_mask,
-        generator,
     )
 
 
