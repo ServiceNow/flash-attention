@@ -262,7 +262,6 @@ std::vector<at::Tensor> dropout_add_ln_fwd(const at::Tensor &x0,      // Input: 
         // state
         int64_t counter_offset = launch_params.elts_per_thread;
 
-
         // See Note [Acquire lock when using random generators]
         {
             std::lock_guard<std::mutex> lock(gen->mutex_);
