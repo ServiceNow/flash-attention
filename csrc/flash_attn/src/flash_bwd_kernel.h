@@ -1335,7 +1335,7 @@ inline __device__ void compute_dq_dk_dv_1rowblock(const Params &params, const in
         // the corresponding values of K would be 0, so the result would still be correct.
         if (Is_causal && m_block * kBlockM < (n_block + 1) * kBlockN) {
             flash::apply_mask_causal(scores, n_block * kBlockN + (tidx / 32 / AtomLayoutMS) * MMA_N_SdP * 16,
-                                    binfo.actual_seqlen_q, binfo.actual_seqlen_k, m_block * kBlockM + get<0>(taccScS_row(0)),
+                                     binfo.actual_seqlen_k, m_block * kBlockM + get<0>(taccScS_row(0)),
                                      // binfo.actual_seqlen_k, m_block * kBlockM + (tidx / 32) % AtomLayoutMS * 16 + (tidx % 32) / 4,
                                      binfo.actual_seqlen_q,
                                      AtomLayoutMS * 16);

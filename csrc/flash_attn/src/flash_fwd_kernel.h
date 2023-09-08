@@ -422,7 +422,7 @@ inline __device__ void compute_attn_1rowblock(const Params &params, const int bi
             // Idk why it's get<1> and not get<0> of the stride.
             // if (cute::thread0()) { print(idx_row.layout()); print(stride<1>(idx_row)); printf("stride = %d \n", get<1>(stride<1>(idx_row))); }
             // I can't get the stride from idx_row
-            flash::apply_mask_causal(scores, n_block * kBlockN, (int)binfo.actual_seqlen_q, (int)binfo.actual_seqlen_k,
+            flash::apply_mask_causal(scores, n_block * kBlockN, binfo.actual_seqlen_k,
                                      // m_block * kBlockM + get<0>(idx_row(0)),
                                      m_block * kBlockM + (tidx / 32) * 16 + (tidx % 32) / 4,
                                      binfo.actual_seqlen_q,
