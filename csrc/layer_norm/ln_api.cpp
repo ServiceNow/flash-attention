@@ -115,13 +115,8 @@ std::vector<at::Tensor> dropout_add_ln_fwd(const at::Tensor &x0,      // Input: 
                                            const float rowscale_const,
                                            const int64_t z_numrows,
                                            c10::optional<at::Generator> gen_,
-                                           bool residual_in_fp32,
-                                           bool is_rms_norm,
-                                           c10::optional<const at::Tensor> &z_,
-                                           c10::optional<const at::Tensor> &x_,
-                                           c10::optional<const at::Tensor> &dmask_,
-                                           c10::optional<const at::Tensor> &mu_,
-                                           c10::optional<const at::Tensor> &rsigma_
+                                           bool residual_in_fp32=false,
+                                           bool is_rms_norm=false
 ) {
     auto itype = x0.scalar_type();
     auto rtype = residual_.has_value()
@@ -206,13 +201,13 @@ std::vector<at::Tensor> dropout_add_ln_fwd(const at::Tensor &x0,      // Input: 
 
     bool save_x = residual_.has_value() || (dropout_p > 0.f) || rowscale_.has_value() || colscale_.has_value() || x0_subset_.has_value() || (itype != rtype);
     at::Tensor x;
-    if (save_x) { x = x_.has_value() ? x_.value() : torch::empty(sizes, opts.dtype(rtype)); }
+    if (save_x) { x = torch::empty(sizes, opts.dtype(rtype)); }
     at::Tensor dmask;
-    if (dropout_p > 0.f) { dmask = dmask_.has_value() ? dmask_.value() : torch::empty(x0.sizes(), opts.dtype(mtype)); };
-    auto z = z_.has_value() ? z_.value() : torch::empty(z_subset_.has_value() ? c10::IntArrayRef{z_numrows, cols} : sizes, opts.dtype(otype));
+    if (dropout_p > 0.f) { dmask = torch::empty(x0.sizes(), opts.dtype(mtype)); };
+    auto z = torch::empty(z_subset_.has_value() ? c10::IntArrayRef{z_numrows, cols} : sizes, opts.dtype(otype));
 
-    auto mu = mu_.has_value() ? mu_.value() : torch::empty({ rows }, opts.dtype(ctype));
-    auto rsigma = rsigma_.has_value() ? rsigma_.value() : torch::empty({ rows }, opts.dtype(ctype));
+    auto mu = torch::empty({ rows }, opts.dtype(ctype));
+    auto rsigma = torch::empty({ rows }, opts.dtype(ctype));
 
     layer_norm::LaunchParams<layer_norm::FwdParams> launch_params;
 
@@ -486,7 +481,7 @@ std::vector<at::Tensor> dropout_add_ln_bwd(const at::Tensor &dz,     // BxSxhidd
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*std::vector<at::Tensor> dropout_add_ln_parallel_residual_fwd(
+std::vector<at::Tensor> dropout_add_ln_parallel_residual_fwd(
     const at::Tensor &x0,      // Input: BxSxhidden_size
     c10::optional<const at::Tensor> &x1_,      // Input: BxSxhidden_size
     c10::optional<const at::Tensor> &residual_,  // Residual: BxSxhidden_size
@@ -650,11 +645,11 @@ std::vector<at::Tensor> dropout_add_ln_bwd(const at::Tensor &dz,     // BxSxhidd
     launcher(launch_params, false);
 
     return { z0, z1, x, dmask0, dmask1, mu, rsigma };
-}*/
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*std::vector<at::Tensor> dropout_add_ln_parallel_residual_bwd(
+std::vector<at::Tensor> dropout_add_ln_parallel_residual_bwd(
     const at::Tensor &dz0,     // BxSxhidden_size
     c10::optional<const at::Tensor> &dz1_,     // BxSxhidden_size
     c10::optional<const at::Tensor> &dx_,     // BxSxhidden_size
@@ -828,7 +823,7 @@ std::vector<at::Tensor> dropout_add_ln_bwd(const at::Tensor &dz,     // BxSxhidd
 
     std::vector<at::Tensor> result = { dx0, dx1, dresidual, dgamma0, dbeta0, dgamma1, dbeta1, dgamma0_part, dbeta0_part, dgamma1_part, dbeta1_part };
     return result;
-}*/
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -838,19 +833,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           py::arg("x0"), py::arg("residual"), py::arg("gamma"), py::arg("beta_"),
           py::arg("rowscale_"), py::arg("colscale_"), py::arg("x0_subset_"), py::arg("z_subset_"),
           py::arg("dropout_p"), py::arg("epsilon"), py::arg("rowscale_const"), py::arg("z_numrows"),
-          py::arg("gen_"), py::arg("residual_in_fp32"), py::arg("is_rms_norm"), py::arg("z_"), py::arg("x_"),
-          py::arg("dmask_"), py::arg("mu_"), py::arg("rsigma_"));
+          py::arg("gen_"), py::arg("residual_in_fp32")=false, py::arg("is_rms_norm")=false);
     m.def("dropout_add_ln_bwd", &dropout_add_ln_bwd, "Run Dropout + Add + LayerNorm backward kernel",
           py::arg("dz"), py::arg("dx_"), py::arg("x"), py::arg("x0_"), py::arg("dmask_"), py::arg("mu"),
           py::arg("rsigma"), py::arg("gamma"), py::arg("rowscale_"), py::arg("colscale_"),
           py::arg("x0_subset_"), py::arg("z_subset_"), py::arg("dropout_p"), py::arg("rowscale_const"),
           py::arg("x0_numrows"), py::arg("has_residual"), py::arg("is_rms_norm")=false);
-    /*m.def("dropout_add_ln_parallel_residual_fwd", &dropout_add_ln_parallel_residual_fwd, "Run Dropout + Add + LayerNorm parallel residual forward kernel",
+    m.def("dropout_add_ln_parallel_residual_fwd", &dropout_add_ln_parallel_residual_fwd, "Run Dropout + Add + LayerNorm parallel residual forward kernel",
           py::arg("x0"), py::arg("x1_"), py::arg("residual"), py::arg("gamma0"), py::arg("beta0_"),
           py::arg("gamma1_"), py::arg("beta1_"), py::arg("dropout_p"), py::arg("epsilon"),
           py::arg("gen_"), py::arg("residual_in_fp32")=false, py::arg("is_rms_norm")=false);
     m.def("dropout_add_ln_parallel_residual_bwd", &dropout_add_ln_parallel_residual_bwd, "Run Dropout + Add + LayerNorm parallel residual backward kernel",
           py::arg("dz0"), py::arg("dz1_"), py::arg("dx_"), py::arg("x"), py::arg("dmask0_"),
           py::arg("dmask1_"), py::arg("mu"), py::arg("rsigma"), py::arg("gamma0"), py::arg("gamma1_"),
-          py::arg("dropout_p"), py::arg("has_x1"), py::arg("has_residual"), py::arg("is_rms_norm")=false);*/
+          py::arg("dropout_p"), py::arg("has_x1"), py::arg("has_residual"), py::arg("is_rms_norm")=false);
 }

@@ -83,7 +83,6 @@ if not torch.cuda.is_available():
 
 
 print("\n\ntorch.__version__  = {}\n\n".format(torch.__version__))
-print(f"Compiling for architectures {os.environ['TORCH_CUDA_ARCH_LIST']}")
 TORCH_MAJOR = int(torch.__version__.split(".")[0])
 TORCH_MINOR = int(torch.__version__.split(".")[1])
 
@@ -103,13 +102,13 @@ cc_flag = []
 _, bare_metal_version = get_cuda_bare_metal_version(CUDA_HOME)
 if bare_metal_version < Version("11.0"):
     raise RuntimeError("dropout_layer_norm is only supported on CUDA 11 and above")
-#cc_flag.append("-gencode")
-#cc_flag.append("arch=compute_70,code=sm_70")
+cc_flag.append("-gencode")
+cc_flag.append("arch=compute_70,code=sm_70")
 cc_flag.append("-gencode")
 cc_flag.append("arch=compute_80,code=sm_80")
-#if bare_metal_version >= Version("11.8"):
-#    cc_flag.append("-gencode")
-#    cc_flag.append("arch=compute_90,code=sm_90")
+if bare_metal_version >= Version("11.8"):
+    cc_flag.append("-gencode")
+    cc_flag.append("arch=compute_90,code=sm_90")
 
 ext_modules.append(
     CUDAExtension(
@@ -144,34 +143,34 @@ ext_modules.append(
             "ln_bwd_7168.cu",
             "ln_fwd_8192.cu",
             "ln_bwd_8192.cu",
-            #"ln_parallel_fwd_256.cu",
-            #"ln_parallel_bwd_256.cu",
-            #"ln_parallel_fwd_512.cu",
-            #"ln_parallel_bwd_512.cu",
-            #"ln_parallel_fwd_768.cu",
-            #"ln_parallel_bwd_768.cu",
-            #"ln_parallel_fwd_1024.cu",
-            #"ln_parallel_bwd_1024.cu",
-            #"ln_parallel_fwd_1280.cu",
-            #"ln_parallel_bwd_1280.cu",
-            #"ln_parallel_fwd_1536.cu",
-            #"ln_parallel_bwd_1536.cu",
-            #"ln_parallel_fwd_2048.cu",
-            #"ln_parallel_bwd_2048.cu",
-            #"ln_parallel_fwd_2560.cu",
-            #"ln_parallel_bwd_2560.cu",
-            #"ln_parallel_fwd_3072.cu",
-            #"ln_parallel_bwd_3072.cu",
-            #"ln_parallel_fwd_4096.cu",
-            #"ln_parallel_bwd_4096.cu",
-            #"ln_parallel_fwd_5120.cu",
-            #"ln_parallel_bwd_5120.cu",
-            #"ln_parallel_fwd_6144.cu",
-            #"ln_parallel_bwd_6144.cu",
-            #"ln_parallel_fwd_7168.cu",
-            #"ln_parallel_bwd_7168.cu",
-            #"ln_parallel_fwd_8192.cu",
-            #"ln_parallel_bwd_8192.cu",
+            "ln_parallel_fwd_256.cu",
+            "ln_parallel_bwd_256.cu",
+            "ln_parallel_fwd_512.cu",
+            "ln_parallel_bwd_512.cu",
+            "ln_parallel_fwd_768.cu",
+            "ln_parallel_bwd_768.cu",
+            "ln_parallel_fwd_1024.cu",
+            "ln_parallel_bwd_1024.cu",
+            "ln_parallel_fwd_1280.cu",
+            "ln_parallel_bwd_1280.cu",
+            "ln_parallel_fwd_1536.cu",
+            "ln_parallel_bwd_1536.cu",
+            "ln_parallel_fwd_2048.cu",
+            "ln_parallel_bwd_2048.cu",
+            "ln_parallel_fwd_2560.cu",
+            "ln_parallel_bwd_2560.cu",
+            "ln_parallel_fwd_3072.cu",
+            "ln_parallel_bwd_3072.cu",
+            "ln_parallel_fwd_4096.cu",
+            "ln_parallel_bwd_4096.cu",
+            "ln_parallel_fwd_5120.cu",
+            "ln_parallel_bwd_5120.cu",
+            "ln_parallel_fwd_6144.cu",
+            "ln_parallel_bwd_6144.cu",
+            "ln_parallel_fwd_7168.cu",
+            "ln_parallel_bwd_7168.cu",
+            "ln_parallel_fwd_8192.cu",
+            "ln_parallel_bwd_8192.cu",
         ],
         extra_compile_args={
             "cxx": ["-O3"] + generator_flag,
