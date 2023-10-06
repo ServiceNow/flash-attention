@@ -256,7 +256,11 @@ mha_fwd(at::Tensor &q,         // batch_size x seqlen_q x num_heads x head_size
         const int window_size_left,
         int window_size_right,
         const bool return_softmax,
-        c10::optional<at::Generator> gen_) {
+        c10::optional<at::Generator> gen_,
+        c10::optional<int> seqlen_q_,
+        c10::optional<int> seqlen_k_,
+        const c10::optional<at::Tensor> &softmax_lse_ // b x h x s softmax logsumexp
+        ) {
 
     auto dprops = at::cuda::getCurrentDeviceProperties();
     // bool is_sm75 = dprops->major == 7 && dprops->minor == 5;
@@ -284,10 +288,10 @@ mha_fwd(at::Tensor &q,         // batch_size x seqlen_q x num_heads x head_size
     const auto sizes = q.sizes();
 
     const int batch_size = sizes[0];
-    int seqlen_q = sizes[1];
+    int seqlen_q = seqlen_q_.has_value() ? seqlen_q_.value() : sizes[1];
     int num_heads = sizes[2];
     const int head_size_og = sizes[3];
-    const int seqlen_k = k.size(1);
+    const int seqlen_k = seqlen_k_.has_value() ? seqlen_k_.value() : k.size(1);
     const int num_heads_k = k.size(2);
     TORCH_CHECK(batch_size > 0, "batch size must be postive");
     TORCH_CHECK(head_size_og <= 256, "FlashAttention forward only supports head dimension at most 256");
@@ -345,7 +349,7 @@ mha_fwd(at::Tensor &q,         // batch_size x seqlen_q x num_heads x head_size
 
     auto opts = q.options();
 
-    auto softmax_lse = torch::empty({batch_size, num_heads, seqlen_q}, opts.dtype(at::kFloat));
+    auto softmax_lse = softmax_lse_.has_value() ? softmax_lse_.value() : torch::empty({batch_size, num_heads, seqlen_q}, opts.dtype(at::kFloat));
     at::Tensor p;
     // Only return softmax if there's dropout to reduce compilation time
     if (return_softmax) {
@@ -439,7 +443,9 @@ mha_varlen_fwd(const at::Tensor &q,  // total_q x num_heads x head_size, total_q
                const int window_size_left,
                int window_size_right,
                const bool return_softmax,
-               c10::optional<at::Generator> gen_) {
+               c10::optional<at::Generator> gen_,
+        const c10::optional<at::Tensor> &softmax_lse_ // b x h x s softmax logsumexp
+        ) {
 
     if (is_causal) { window_size_right = 0; }
     auto dprops = at::cuda::getCurrentDeviceProperties();
@@ -524,7 +530,7 @@ mha_varlen_fwd(const at::Tensor &q,  // total_q x num_heads x head_size, total_q
 
     auto opts = q.options();
 
-    auto softmax_lse = torch::empty({batch_size, num_heads, max_seqlen_q}, opts.dtype(at::kFloat));
+    auto softmax_lse = softmax_lse_.has_value() ? softmax_lse_.value() : torch::empty({batch_size, num_heads, max_seqlen_q}, opts.dtype(at::kFloat));
     at::Tensor p;
     // Only return softmax if there's dropout to reduce compilation time
     if (return_softmax) {
@@ -585,8 +591,11 @@ mha_varlen_fwd(const at::Tensor &q,  // total_q x num_heads x head_size, total_q
 }
 
 void run_mha_bwd(Flash_bwd_params &params, cudaStream_t stream, const bool configure) {
+
     FP16_SWITCH(!params.is_bf16, [&] {
-        if (params.d <= 32) {
+        TORCH_CHECK(params.d == 128, "Invalid size");
+        run_mha_bwd_<elem_type, 128>(params, stream, configure);
+        /*if (params.d <= 32) {
             run_mha_bwd_<elem_type, 32>(params, stream, configure);
         } else if (params.d <= 64) {
             run_mha_bwd_<elem_type, 64>(params, stream, configure);
@@ -602,7 +611,7 @@ void run_mha_bwd(Flash_bwd_params &params, cudaStream_t stream, const bool confi
           run_mha_bwd_<elem_type, 224>(params, stream, configure);
         } else if (params.d <= 256) {
           run_mha_bwd_<elem_type, 256>(params, stream, configure);
-        }
+        }*/
     });
 }
 

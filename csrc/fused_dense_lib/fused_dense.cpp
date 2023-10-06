@@ -92,7 +92,8 @@ std::vector<at::Tensor> linear_bias_wgrad(at::Tensor input, at::Tensor d_output,
 
 std::vector<at::Tensor> linear_act_forward(at::Tensor input, at::Tensor weight,
                                            c10::optional<at::Tensor> bias_,
-                                           bool is_gelu, bool save_pre_act, int heuristic) {
+                                           bool is_gelu, bool save_pre_act, int heuristic,
+                                           c10::optional<at::Tensor> out, c10::optional<at::Tensor> pre_act_) {
 
   int64_t batch_size = input.size(0);
   int64_t in_features = input.size(1);
@@ -120,10 +121,10 @@ std::vector<at::Tensor> linear_act_forward(at::Tensor input, at::Tensor weight,
 
   // create output/workspace tensor
   auto opts = input.options();
-  auto output = at::empty({batch_size, out_features}, opts);
+  auto output = out.has_value() ? out.value() : at::empty({batch_size, out_features}, opts);
   at::Tensor pre_act;
   // If ReLU, cuBlasLT stores a bit-mask (1 bit per element)
-  if (save_pre_act) { pre_act = at::empty({batch_size, is_gelu ? out_features : out_features / 8},
+  if (save_pre_act) { pre_act = pre_act_.has_value() ? pre_act_.value() : at::empty({batch_size, is_gelu ? out_features : out_features / 8},
                                           is_gelu ? opts : opts.dtype(torch::kUInt8)); }
   // See https://github.com/pytorch/pytorch/issues/73328 for reasoning behind setting this to 1M.
   // However, Apex sets it to 4M and TransformerEngine sets to 32M for Hopper and 4M for other GPUs
